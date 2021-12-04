@@ -1,1 +1,1 @@
-cp index.html /home/ec2-user/
+cp index.html /var/www/html/
