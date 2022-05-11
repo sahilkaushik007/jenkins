@@ -1,77 +1,44 @@
 pipeline {
     agent { label 'master' }
     environment {
-        SCRIPT_GIT_URL = 'https://github.com/sahilkaushik007/jenkins.git'
+        BUILD_USER=getBuildUser()
+		GIT=gitCommitURL()  
+		BUILD_ENVIRONMENT="Test"
+		MODULE_NAME="accounts"
+		BUILD_URL="${env.BUILD_URL}"
+		REPO=get_repo()
+		BU="${BUILD_USER}"
+		VERSION=sh (script: "sed -n '/version/p' package.json | cut -b 14- | tr -d \'\",\' ",returnStdout: true).trim()
+        ARTIFACTORY_BINARY="${ARTIFACTORY_URL}/${JFROG_REPO_NAME}/${ENVIRONMENT}/${VERSION}/${MODULE_NAME}/${BUILD_NUMBER}"
+		ARTIFACTORY_XRAY="${XRAY_URL}/${JFROG_REPO_NAME}/${ENVIRONMENT}/${VERSION}/${MODULE_NAME}/${BUILD_NUMBER}/manifest.json"
     }
+    parameters{
+		choice(name: 'ENVIRONMENT', choices: ['dev', 'qa'], description: 'Select the Env Name from the Dropdown List')
+		booleanParam(name: 'Deploy', defaultValue: false, description:'Enable it if you want to deploy as well')
+		booleanParam(name: 'Sanity_test', defaultValue: false, description:'Enable it if you want to sanity test in testsigma')
+		booleanParam(name: 'SonarQube', defaultValue: false, description:'Enable it if you want to run SonarQube scan')
+		booleanParam(name: 'Check_Quality_Gate', defaultValue: false, description:'Enable it if you want to run Sonar Quality Gate')
+		booleanParam(name: 'Notification', defaultValue: true, description:'Enable it if you want to get build notification')
+	}
     
     stages {
         stage('Checkout') {
             steps {
-                script{
-                FIREWALL_RULES_GIT_URL = ""
-                if (params.Environment == 'prod') {
-                    FIREWALL_RULES_GIT_URL = 'https://github.com/sahilkaushik007/jenkins.git'
-                } 
-                else {
-                    FIREWALL_RULES_GIT_URL = 'https://github.com/sahilkaushik007/jenkins.git'
-                }
-
-                echo 'Cloning repo..'
-                checkout([  
-                         $class: 'GitSCM', 
-                         branches: [[name: 'master']], 
-                         doGenerateSubmoduleConfigurations: false, 
-                         extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'manual-rules-config']], 
-                         submoduleCfg: [], 
-                         userRemoteConfigs: [[credentialsId: 'suricata-git-user', url: "${FIREWALL_RULES_GIT_URL}"]]
-                        ])
-
-                checkout([  
-                         $class: 'GitSCM', 
-                         branches: [[name: 'master']], 
-                         doGenerateSubmoduleConfigurations: false, 
-                         extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'execution-script']], 
-                         submoduleCfg: [], 
-                         userRemoteConfigs: [[credentialsId: 'suricata-git-user', url: "${SCRIPT_GIT_URL}"]]
-                        ])
-                        sh"""
-                           mv ${WORKSPACE}/manual-rules-config/Firewall-configs/manual_pass.json ${WORKSPACE}/execution-script/egress-traffic-control/suricata-rule-kreator
-                        """
-
-                }
-            }
-        }
-        stage('Dependency Installations') {
-            steps {
-                script{
-                    sh """
-                       cd  ${WORKSPACE}/execution-script/egress-traffic-control/suricata-rule-kreator
-                       pip3 install -r requirements.txt --no-cache-dir
-                    """
-                }
-            }
-        }
-        stage('Script Execution') {
-            steps {
-                script{
-                    try {
-                      sh """
-                       cd  ${WORKSPACE}/execution-script/egress-traffic-control/suricata-rule-kreator
-                       python3 manual_rules.py
-                      """
-
-                    }
-                    catch (Exception e) {
-                      echo 'Err: Script Execution failed with Error: ' + e.toString()              
-                   }     
-                }
+                    checkout_code('cam_server_web',"${REPO}")
+					if (env.CHANGE_ID) {
+						echo "$CHANGE_AUTHOR"
+						BU="$CHANGE_AUTHOR"
+					}
+					if ("${params.ENVIRONMENT}"=="dev" || "${env.CHANGE_TARGET}"=="developer"){
+					   	   ENVIRONMENT="dev"
+						   REPOSITORY_NAME = "accounts-dev"
+						   CLUSTER = "accounts-dev"
+						   FAMILY = "accounts-dev"
+						   NAME = "accounts-dev"
+						   SERVICE_NAME = "accounts-dev"
+						   ECS_TASK_ROLE_ARN = "arn:aws:iam::908878033545:role/Dreamfactory_Task"
+						   sh "cp -pr /var/lib/jenkins/jenkins_jobs/accounts-dev/. ."
+					}
             }
         }
     }
-    post { 
-        always { 
-            echo 'GoodBye!..'
-            cleanWs()
-        }
-    }
-}
