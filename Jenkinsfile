@@ -1,5 +1,5 @@
 pipeline {
-    agent { label 'any' }
+    agent any
     environment {
         SCRIPT_GIT_URL = 'https://github.com/sahilkaushik007/jenkins.git'
     }
