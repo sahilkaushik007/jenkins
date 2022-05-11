@@ -1,5 +1,5 @@
 pipeline {
-    agent { label 'master' }
+    agent { label 'any' }
     environment {
         BUILD_USER=getBuildUser()
 		GIT=gitCommitURL()  
