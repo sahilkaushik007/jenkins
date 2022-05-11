@@ -9,7 +9,7 @@ pipeline {
 		REPO=get_repo()
 		BU="${BUILD_USER}"
 		VERSION=sh (script: "sed -n '/version/p' package.json | cut -b 14- | tr -d \'\",\' ",returnStdout: true).trim()
-        ARTIFACTORY_BINARY="${ARTIFACTORY_URL}/${JFROG_REPO_NAME}/${ENVIRONMENT}/${VERSION}/${MODULE_NAME}/${BUILD_NUMBER}"
+        	ARTIFACTORY_BINARY="${ARTIFACTORY_URL}/${JFROG_REPO_NAME}/${ENVIRONMENT}/${VERSION}/${MODULE_NAME}/${BUILD_NUMBER}"
 		ARTIFACTORY_XRAY="${XRAY_URL}/${JFROG_REPO_NAME}/${ENVIRONMENT}/${VERSION}/${MODULE_NAME}/${BUILD_NUMBER}/manifest.json"
     }
     parameters{
